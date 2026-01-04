@@ -306,6 +306,109 @@ class DataExtractor:
             logger.error(f"任务3执行失败: {e}")
             return False
 
+    def task4_extract_rdpm_data(self) -> bool:
+        """
+        任务4: RDPM导入数据抽取
+
+        从数据库中抽取RDPM系统所需的导入数据
+
+        Returns:
+            bool: 执行是否成功
+        """
+        try:
+            logger.info("=" * 80)
+            logger.info("开始执行任务4: RDPM数据抽取")
+            logger.info("=" * 80)
+
+            # 获取输出文件名
+            base_filename = self.config['output']['files']['task4']
+            output_file = self._get_output_filename('task4')
+
+            # SQL查询 - RDPM导入数据
+            query = """
+            SELECT
+                A.创建时间,
+                A.审批编号,
+                A.所涉产品,
+                A.软件版本号,
+                A.所属客户项目,
+                A.问题描述,
+                B.部门负责人 as "测试负责人"
+            FROM yxwtzb_"""+self.schema_date+""".计算解决率过程数据 A,
+                 public."各产品对应的测试部长" B
+            WHERE 1=1
+              AND A.所涉产品=B."具体的产品"
+              AND A.创建时间 >= %s
+              AND A.创建时间 <= %s
+              AND A.审批状态 <> %s
+              AND A.审批结果 <> %s
+              AND A.非研发处理问题类别 <> %s
+            ORDER BY A.创建时间 DESC;
+            """
+
+            # 准备参数
+            params = (
+                f"{self.start_date} 00:00:01",
+                f"{self.end_date} 23:59:59",
+                '终止',
+                '审批未通过',
+                '需求'
+            )
+
+            # 执行查询
+            df = self.db.execute_query(query, params=params)
+
+            if len(df) == 0:
+                logger.warning(f"查询结果为空,日期范围: {self.start_date} 至 {self.end_date}")
+            else:
+                logger.info(f"查询到 {len(df)} 条RDPM数据")
+
+            # 重命名列为RDPM要求的格式
+            rdpm_columns = {
+                '创建时间': '一线问题提交时间(年-月-日 时：分：秒)(必填)',
+                '审批编号': '审批编号(必填)',
+                '所涉产品': '所涉产品(必填)',
+                '软件版本号': '版本(必填)',
+                '所属客户项目': '局点(必填)',
+                '问题描述': '问题描述(必填)',
+                '测试负责人': '测试负责人(必填)'
+            }
+
+            df = df.rename(columns=rdpm_columns)
+
+            # 调整列顺序(按照RDPM要求的顺序)
+            ordered_columns = [
+                '一线问题提交时间(年-月-日 时：分：秒)(必填)',
+                '审批编号(必填)',
+                '所涉产品(必填)',
+                '版本(必填)',
+                '局点(必填)',
+                '问题描述(必填)',
+                '测试负责人(必填)'
+            ]
+
+            df = df[ordered_columns]
+
+            # 写入Excel
+            df.to_excel(output_file, sheet_name='RDPM导入数据', index=False)
+
+            logger.info(f"""
+            任务4完成 ✓
+            - 输出文件: {output_file}
+            - 数据行数: {len(df)}
+            - 列数: {len(df.columns)}
+            - 筛选范围: {self.start_date} 至 {self.end_date}
+            - 表头格式: RDPM系统标准
+            """)
+
+            return True
+
+        except Exception as e:
+            logger.error(f"任务4执行失败: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return False
+
     def run_all_tasks(self) -> Dict[str, bool]:
         """
         运行所有抽取任务
@@ -327,13 +430,20 @@ class DataExtractor:
             self.db.connect()
 
             # 执行任务1
-            results['task1'] = self.task1_extract_original_data()
+            if self.config['tasks'].get('task1_enabled', True):
+                results['task1'] = self.task1_extract_original_data()
 
             # 执行任务2
-            results['task2'] = self.task2_extract_calculated_data()
+            if self.config['tasks'].get('task2_enabled', True):
+                results['task2'] = self.task2_extract_calculated_data()
 
             # 执行任务3
-            results['task3'] = self.task3_extract_new_issues()
+            if self.config['tasks'].get('task3_enabled', True):
+                results['task3'] = self.task3_extract_new_issues()
+
+            # 执行任务4
+            if self.config['tasks'].get('task4_enabled', True):
+                results['task4'] = self.task4_extract_rdpm_data()
 
             # 断开数据库连接
             self.db.disconnect()
