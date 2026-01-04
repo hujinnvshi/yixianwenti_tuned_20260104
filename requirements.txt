@@ -1,0 +1,19 @@
+# 核心依赖
+pandas>=2.0.0
+openpyxl>=3.1.0
+xlsxwriter>=3.1.0
+numpy>=1.24.0
+pyyaml>=6.0
+
+# 日期时间处理
+python-dateutil>=2.8.2
+
+# 日志
+loguru>=0.7.0
+
+# 测试
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# AI辅助(可选)
+# openai>=1.0.0
