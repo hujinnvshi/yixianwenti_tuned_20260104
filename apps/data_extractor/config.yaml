@@ -25,9 +25,9 @@ date_range:
 output:
   directory: "output"
   files:
-    task1: "原始数据.xlsx"
-    task2: "计算数据.xlsx"
-    task3: "本周新增问题.xlsx"
+    task1: "原始数据1.xlsx"
+    task2: "计算数据1.xlsx"
+    task3: "本周新增问题1.xlsx"
 
 # 任务配置
 tasks:

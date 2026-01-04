@@ -9,8 +9,8 @@ from typing import Dict, Optional
 from datetime import datetime
 from loguru import logger
 
-from db_connector import DatabaseConnector
-from date_utils import DateUtils
+from .db_connector import DatabaseConnector
+from .date_utils import DateUtils
 
 
 class DataExtractor:
