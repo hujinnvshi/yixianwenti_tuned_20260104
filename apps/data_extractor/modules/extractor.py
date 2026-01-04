@@ -286,6 +286,11 @@ class DataExtractor:
             else:
                 logger.info(f"查询到 {len(df)} 条新增问题")
 
+            # 重新编号序号列
+            if len(df) > 0 and '序号' in df.columns:
+                df['序号'] = range(1, len(df) + 1)
+                logger.info(f"序号已重新编号: 1 到 {len(df)}")
+
             # 写入Excel
             df.to_excel(output_file, sheet_name='本周新增问题', index=False)
 
