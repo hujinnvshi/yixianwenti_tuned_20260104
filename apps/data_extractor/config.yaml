@@ -17,9 +17,9 @@ schema:
 # 日期范围配置
 date_range:
   # 筛选起始日期(上周周一) - null表示自动计算
-  start_date: null  # 例如: 2025-12-22
+  start_date: 2025-12-29  # 例如: 2025-12-22
   # 筛选结束日期(上周周日) - null表示自动计算
-  end_date: null    # 例如: 2025-12-28
+  end_date: 2025-12-31    # 例如: 2025-12-28
 
 # 输出配置
 output:
