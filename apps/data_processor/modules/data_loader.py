@@ -22,7 +22,8 @@ class DataLoader:
         self.config = config
         self.table1_path = Path(config['input']['table1'])
         self.table2_path = Path(config['input']['table2'])
-        self.sheet_name = config['input']['sheet_name']
+        self.sheet_name1 = config['input'].get('sheet_name1', 'Result 1')
+        self.sheet_name2 = config['input'].get('sheet_name2', 'Result 1')
 
     def load_table1(self) -> pd.DataFrame:
         """
@@ -36,7 +37,7 @@ class DataLoader:
         if not self.table1_path.exists():
             raise FileNotFoundError(f"文件不存在: {self.table1_path}")
 
-        df = pd.read_excel(self.table1_path, sheet_name=self.sheet_name)
+        df = pd.read_excel(self.table1_path, sheet_name=self.sheet_name1)
 
         logger.info(f"表格1加载成功: {len(df)}行 × {len(df.columns)}列")
 
@@ -57,7 +58,7 @@ class DataLoader:
         if not self.table2_path.exists():
             raise FileNotFoundError(f"文件不存在: {self.table2_path}")
 
-        df = pd.read_excel(self.table2_path, sheet_name=self.sheet_name)
+        df = pd.read_excel(self.table2_path, sheet_name=self.sheet_name2)
 
         logger.info(f"表格2加载成功: {len(df)}行 × {len(df.columns)}列")
 

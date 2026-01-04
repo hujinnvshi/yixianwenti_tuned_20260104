@@ -2,19 +2,20 @@
 
 # 数据源路径
 input:
-  table1: "data/计算.xlsx"
-  table2: "data/原始.xlsx"
-  sheet_name: "Result 1"
+  table1: "../../data/计算.xlsx"
+  table2: "../../data/原始.xlsx"
+  sheet_name1: "计算解决率过程数据"
+  sheet_name2: "原始数据"
 
 # 输出路径
 output:
-  directory: "output"
+  directory: "../../output"
   filename: "第52周一线问题跟踪确认-20260104.xlsx"
 
 # 日志配置
 logging:
   level: "INFO"
-  file: "logs/data_processing.log"
+  file: "../../logs/data_processing_{time}.log"
   rotation: "10 MB"
   retention: "7 days"
 
