@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Dict, Optional
 from datetime import datetime
 from loguru import logger
+from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
 
 from .db_connector import DatabaseConnector
 from .date_utils import DateUtils
@@ -203,6 +205,9 @@ class DataExtractor:
             # 写入Excel
             df.to_excel(output_file, sheet_name='计算解决率过程数据', index=False)
 
+            # 添加背景色标记 - 为上周创建的数据添加浅蓝色背景
+            self._add_background_color_for_last_week(output_file, df)
+
             logger.info(f"""
             任务2完成 ✓
             - 输出文件: {output_file}
@@ -215,6 +220,99 @@ class DataExtractor:
         except Exception as e:
             logger.error(f"任务2执行失败: {e}")
             return False
+
+    def _add_background_color_for_last_week(self, output_file: Path, df: pd.DataFrame):
+        """
+        为配置日期范围内创建的数据行添加浅蓝色背景色
+
+        使用配置文件中的 date_range (与任务3/任务4相同的时间范围)
+
+        Args:
+            output_file: Excel文件路径
+            df: 数据框(用于获取列索引)
+        """
+        try:
+            logger.info("开始添加背景色标记...")
+
+            # 加载工作簿
+            wb = load_workbook(output_file)
+            ws = wb['计算解决率过程数据']
+
+            # 使用配置的日期范围(与任务3/任务4相同)
+            highlight_start = self.start_date
+            highlight_end = self.end_date
+
+            # 转换为日期对象以便比较
+            from datetime import datetime
+            highlight_start_dt = datetime.strptime(highlight_start, "%Y-%m-%d").date()
+            highlight_end_dt = datetime.strptime(highlight_end, "%Y-%m-%d").date()
+
+            logger.info(f"背景色标记范围: {highlight_start} 至 {highlight_end} (来自配置文件)")
+
+            # 定义浅蓝色填充
+            light_blue_fill = PatternFill(
+                start_color="E6F2FF",
+                end_color="E6F2FF",
+                fill_type="solid"
+            )
+
+            # 查找创建时间列的索引
+            columns = df.columns.tolist()
+            created_time_col_idx = None
+            for idx, col_name in enumerate(columns):
+                if col_name == '创建时间':
+                    created_time_col_idx = idx + 1  # Excel列从1开始
+                    break
+
+            if created_time_col_idx is None:
+                logger.warning("未找到'创建时间'列,跳过背景色标记")
+                return
+
+            # 统计标记数量
+            marked_count = 0
+
+            # 遍历数据行(从第2行开始,第1行是表头)
+            for row in range(2, ws.max_row + 1):
+                cell = ws.cell(row=row, column=created_time_col_idx)
+                created_date = cell.value
+
+                # 检查创建时间是否在配置的日期范围内
+                if created_date:
+                    # 处理不同的日期格式
+                    if isinstance(created_date, datetime):
+                        created_date_only = created_date.date()
+                    elif isinstance(created_date, str):
+                        try:
+                            # 尝试解析字符串日期
+                            created_date_only = datetime.strptime(created_date, "%Y-%m-%d %H:%M:%S").date()
+                        except:
+                            try:
+                                created_date_only = datetime.strptime(created_date, "%Y-%m-%d").date()
+                            except:
+                                logger.warning(f"无法解析日期: {created_date}")
+                                continue
+                    else:
+                        continue
+
+                    # 判断是否在配置的日期范围内
+                    if highlight_start_dt <= created_date_only <= highlight_end_dt:
+                        # 为整行添加背景色
+                        for col in range(1, ws.max_column + 1):
+                            ws.cell(row=row, column=col).fill = light_blue_fill
+                        marked_count += 1
+
+            # 保存工作簿
+            wb.save(output_file)
+
+            logger.info(f"背景色标记完成 ✓")
+            logger.info(f"- 标记行数: {marked_count}")
+            logger.info(f"- 背景色: 浅蓝色 (#E6F2FF)")
+
+        except Exception as e:
+            logger.error(f"添加背景色时出错: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            # 不中断流程,即使添加背景色失败也继续
 
     def task3_extract_new_issues(self) -> bool:
         """
