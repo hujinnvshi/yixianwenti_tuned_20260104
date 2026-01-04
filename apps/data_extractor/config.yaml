@@ -24,10 +24,14 @@ date_range:
 # 输出配置
 output:
   directory: "output"
+  # 文件名前缀: 默认使用当前日期(YYYY-MM-DD)
+  # 格式: 前缀_原文件名.xlsx
+  # 例如: 2026-01-04_原始数据.xlsx
+  date_prefix: true  # true=添加日期前缀, false=不添加
   files:
-    task1: "原始数据1.xlsx"
-    task2: "计算数据1.xlsx"
-    task3: "本周新增问题1.xlsx"
+    task1: "原始数据.xlsx"
+    task2: "计算数据.xlsx"
+    task3: "本周新增问题.xlsx"
 
 # 任务配置
 tasks:

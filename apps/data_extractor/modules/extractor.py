@@ -32,8 +32,40 @@ class DataExtractor:
         # 创建输出目录
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
+        # 生成文件名前缀
+        self.date_prefix = self._get_date_prefix()
+
         # 初始化数据库连接
         self.db = DatabaseConnector(config)
+
+    def _get_date_prefix(self) -> str:
+        """
+        获取文件名日期前缀
+
+        Returns:
+            str: 日期前缀,例如: "2026-01-04_"
+        """
+        if self.config['output'].get('date_prefix', False):
+            prefix = datetime.now().strftime("%Y-%m-%d_")
+            logger.info(f"使用日期前缀: {prefix}")
+            return prefix
+        else:
+            logger.info("不使用日期前缀")
+            return ""
+
+    def _get_output_filename(self, filename_key: str) -> Path:
+        """
+        获取带前缀的输出文件名
+
+        Args:
+            filename_key: 配置文件中的键名(task1/task2/task3)
+
+        Returns:
+            Path: 完整的输出文件路径
+        """
+        base_filename = self.config['output']['files'][filename_key]
+        filename = self.date_prefix + base_filename
+        return self.output_dir / filename
 
     def _get_schema_date(self) -> str:
         """
@@ -101,7 +133,7 @@ class DataExtractor:
 
         try:
             table_name = self.get_full_table_name("导出原始数据")
-            output_file = self.output_dir / self.config['output']['files']['task1']
+            output_file = self._get_output_filename('task1')
 
             # 检查表是否存在
             if not self.db.table_exists(f"yxwtzb_{self.schema_date}", "导出原始数据"):
@@ -151,7 +183,7 @@ class DataExtractor:
 
         try:
             table_name = self.get_full_table_name("计算解决率过程数据")
-            output_file = self.output_dir / self.config['output']['files']['task2']
+            output_file = self._get_output_filename('task2')
 
             # 检查表是否存在
             if not self.db.table_exists(f"yxwtzb_{self.schema_date}", "计算解决率过程数据"):
@@ -201,7 +233,7 @@ class DataExtractor:
 
         try:
             table_name = self.get_full_table_name("计算解决率过程数据")
-            output_file = self.output_dir / self.config['output']['files']['task3']
+            output_file = self._get_output_filename('task3')
 
             # 检查表是否存在
             if not self.db.table_exists(f"yxwtzb_{self.schema_date}", "计算解决率过程数据"):
