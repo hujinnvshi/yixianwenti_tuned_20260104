@@ -22,6 +22,15 @@ class PivotGenerator:
         self.config = config
         self.decimals = config['calculation']['percentage_decimals']
 
+        # 定义列顺序
+        self.column_order = [
+            '非研发处理',
+            '及时解决',
+            '未及时解决',
+            '处理中暂未超时',
+            '超时未解决'
+        ]
+
     def create_pivot_table(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         创建透视表
@@ -32,7 +41,7 @@ class PivotGenerator:
 
         透视表结构:
         - 行: 所涉产品
-        - 列: 用于交付日期偏差统计
+        - 列: 用于交付日期偏差统计 (按照固定顺序)
         - 值: count(数据id)
 
         Args:
@@ -61,16 +70,55 @@ class PivotGenerator:
             fill_value=0
         )
 
-        logger.info(f"透视表创建成功: {len(pivot)}个产品")
+        # 调整列顺序
+        pivot = self._reorder_columns(pivot)
+
+        # 添加总计列
+        pivot['总计'] = pivot[self.column_order].sum(axis=1)
+
+        logger.info(f"透视表创建成功: {len(pivot)}个产品, {len(pivot.columns)}列")
 
         return pivot
+
+    def _reorder_columns(self, pivot: pd.DataFrame) -> pd.DataFrame:
+        """
+        调整列顺序为指定顺序
+
+        Args:
+            pivot: 透视表
+
+        Returns:
+            pd.DataFrame: 调整列顺序后的透视表
+        """
+        logger.info("调整透视表列顺序...")
+
+        # 确保所有需要的列都存在
+        for col in self.column_order:
+            if col not in pivot.columns:
+                pivot[col] = 0  # 如果列不存在,添加并填充0
+
+        # 只保留指定的列,并按照指定顺序排列
+        pivot_ordered = pivot[self.column_order].copy()
+
+        logger.info(f"列顺序调整完成: {list(pivot_ordered.columns)}")
+
+        return pivot_ordered
 
     def calculate_metrics(self, pivot: pd.DataFrame) -> pd.DataFrame:
         """
         计算解决率和及时解决率
 
-        解决率 = (及时解决 + 未及时解决) / (总计 - 非研发 - 其他排除)
-        及时解决率 = 及时解决 / (总计 - 非研发 - 其他排除)
+        列顺序:
+        1. 非研发处理
+        2. 及时解决
+        3. 未及时解决
+        4. 处理中暂未超时
+        5. 超时未解决
+        6. 总计
+
+        计算公式:
+        - 解决率 = (及时解决 + 未及时解决) / (总计 - 非研发处理) * 100%
+        - 及时解决率 = 及时解决 / (总计 - 非研发处理) * 100%
 
         Args:
             pivot: 透视表
@@ -80,36 +128,25 @@ class PivotGenerator:
         """
         logger.info("开始计算解决率和及时解决率...")
 
-        # 创建结果DataFrame
         result_df = pivot.copy()
-
-        # 获取所有列名
-        all_columns = pivot.columns.tolist()
 
         # 计算每个产品的统计指标
         for product in pivot.index:
-            row_data = pivot.loc[product]
+            # 按列顺序获取数据
+            non_dev = pivot.loc[product, '非研发处理']
+            timely = pivot.loc[product, '及时解决']
+            not_timely = pivot.loc[product, '未及时解决']
+            total = pivot.loc[product, '总计']
 
-            # 各状态数量
-            timely = row_data.get('及时解决', 0)
-            not_timely = row_data.get('未及时解决', 0)
-            timeout = row_data.get('超时未解决', 0)
-            processing = row_data.get('处理中暂未超时', 0)
-            non_dev = row_data.get('非研发处理', 0)
-
-            # 计算总数
-            total = row_data.sum()
-
-            # 计算分母(总计 - 非研发 - 其他排除)
-            # 这里"其他排除"指的是非正常流程的状态
+            # 计算分母(总计 - 非研发处理)
             denominator = total - non_dev
 
             if denominator > 0:
-                # 解决率
+                # 解决率 = (及时解决 + 未及时解决) / (总计 - 非研发处理) * 100%
                 resolution_rate = ((timely + not_timely) / denominator) * 100
                 result_df.loc[product, '解决率'] = round(resolution_rate, self.decimals)
 
-                # 及时解决率
+                # 及时解决率 = 及时解决 / (总计 - 非研发处理) * 100%
                 timely_rate = (timely / denominator) * 100
                 result_df.loc[product, '及时解决率'] = round(timely_rate, self.decimals)
             else:
